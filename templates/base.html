@@ -8,25 +8,52 @@
   <link rel="stylesheet" href="{% static 'css/base.css' %}">
   <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
 </head>
-<body>
-  <header class="site-header">
-    <div class="brand">ДАР-Скрин</div>
+<body class="layout-{% if layout %}{{ layout }}{% else %}default{% endif %}">
+  <div class="app-shell">
     {% if user.is_authenticated %}
-      <form method="post" action="{% url 'logout' %}" class="logout-form">
+    <aside class="sidebar" aria-label="Навигация">
+      <div class="brand sidebar-brand">ДАР-Скрин</div>
+      <nav class="sidebar-nav">
+        <a href="{% url 'home' %}">Главная</a>
+        {% if user.is_employee %}
+          <a href="{% url 'employee_assignment_list' %}">Мои анкеты</a>
+        {% endif %}
+        {% if user.is_therapist %}
+          <a href="{% url 'therapist_assignment_list' %}">Назначения</a>
+        {% endif %}
+        {% if user.is_org_admin and not user.is_therapist and not user.is_employee %}
+          <a href="{% url 'admin:index' %}">Администрирование</a>
+        {% endif %}
+      </nav>
+      <form method="post" action="{% url 'logout' %}" class="logout-form sidebar-logout">
         {% csrf_token %}
         <button type="submit">Выйти</button>
       </form>
+    </aside>
     {% endif %}
-  </header>
-  <main class="site-main">
-    {% if messages %}
-      <ul class="messages">
-        {% for message in messages %}
-          <li>{{ message }}</li>
-        {% endfor %}
-      </ul>
-    {% endif %}
-    {% block content %}{% endblock %}
-  </main>
+    <div class="app-content">
+      <header class="site-header">
+        <div class="brand header-brand">ДАР-Скрин</div>
+        {% if user.is_authenticated %}
+          <div class="header-user">{{ user.username }}</div>
+          <form method="post" action="{% url 'logout' %}" class="logout-form header-logout">
+            {% csrf_token %}
+            <button type="submit">Выйти</button>
+          </form>
+        {% endif %}
+      </header>
+      <main class="site-main">
+        {% if messages %}
+          <ul class="messages">
+            {% for message in messages %}
+              <li class="message message-{{ message.tags }}">{{ message }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+  {% block extra_js %}{% endblock %}
 </body>
 </html>

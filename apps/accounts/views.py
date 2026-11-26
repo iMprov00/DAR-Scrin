@@ -1,4 +1,4 @@
-"""Представления входа (заготовка этапа 1)."""
+"""Представления входа и главной."""
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView, LogoutView
 from django.shortcuts import render
@@ -18,7 +18,19 @@ class RuLogoutView(LogoutView):
 
 @method_decorator(login_required, name="dispatch")
 class HomeView(View):
-    """Простая заглушка после входа (полный UI — этапы 2–3)."""
+    """Главная: ссылки по ролям, без пустых разделов."""
 
     def get(self, request):
-        return render(request, "home.html")
+        return render(
+            request,
+            "home.html",
+            {
+                "layout": (
+                    "therapist"
+                    if request.user.is_therapist
+                    else "employee"
+                    if request.user.is_employee
+                    else "default"
+                ),
+            },
+        )

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Назначения — ДАР-Скрин{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <h1>Назначения</h1>
+
+  <form method="get" class="filters" action="{% url 'therapist_assignment_list' %}">
+    <label>
+      Статус
+      <select name="status" class="input-control">
+        <option value="">Все</option>
+        {% for value, label in status_choices %}
+          <option value="{{ value }}" {% if filter_status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="check-inline">
+      <input type="checkbox" name="overdue" value="1" {% if filter_overdue %}checked{% endif %}>
+      Только просроченные
+    </label>
+    <button type="submit">Применить фильтры</button>
+  </form>
+
+  <div class="assign-box">
+    <h2>Назначить анкету</h2>
+    <form method="post" action="{% url 'therapist_assign' %}" class="assign-form">
+      {% csrf_token %}
+      <label>
+        Сотрудник
+        <select name="employee_id" required class="input-control">
+          <option value="">Выберите…</option>
+          {% for emp in employees %}
+            <option value="{{ emp.pk }}">{{ emp.user.username }}{% if emp.department %} — {{ emp.department.name }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Срок
+        <input type="date" name="due_date" required class="input-control">
+      </label>
+      <button type="submit">Назначить анкету</button>
+    </form>
+  </div>
+
+  {% if rows %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>№</th>
+          <th>Сотрудник</th>
+          <th>Статус</th>
+          <th>Срок</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr class="{% if row.overdue %}row-overdue{% endif %}">
+            <td>{{ row.assignment.pk }}</td>
+            <td>{{ row.employee.user.username }}</td>
+            <td>
+              <span class="badge status-{{ row.assignment.status }}">{{ row.status_label }}</span>
+              {% if row.overdue %}<span class="badge badge-overdue">Просрочено</span>{% endif %}
+            </td>
+            <td>{{ row.assignment.due_date|date:"d.m.Y" }}</td>
+            <td><a href="{% url 'therapist_assignment_detail' row.assignment.pk %}">Открыть</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="hint">Нет назначений по выбранным фильтрам.</p>
+  {% endif %}
+</section>
+{% endblock %}
