@@ -11,6 +11,10 @@ from django.core.exceptions import PermissionDenied
 from django.test import TestCase
 from apps.questionnaires.services import copy_version_as_draft, publish_version
 from apps.screenings.models import AnswerSnapshot, Assignment
+from apps.screenings.forms_validation import (
+    is_answer_present,
+    missing_visible_codes,
+)
 from apps.screenings.services import (
     DomainError,
     autosave_draft,
@@ -30,6 +34,7 @@ from apps.screenings.tests.helpers import (
     make_employee,
     make_org,
     make_therapist,
+    published_version,
 )
 
 
@@ -319,6 +324,25 @@ class DomainMatrixTests(TestCase):
         assignment.refresh_from_db()
         self.assertEqual(assignment.status, Assignment.Status.CANCELED)
         self.assertTrue(Assignment.objects.filter(pk=pk).exists())
+
+    def test_t17_empty_answer_is_not_no(self):
+        """T17: пустой пункт ≠ ответ «нет»; False — это явный ответ."""
+        self.assertFalse(is_answer_present(None))
+        self.assertFalse(is_answer_present(""))
+        self.assertFalse(is_answer_present("   "))
+        self.assertTrue(is_answer_present(False))
+        self.assertTrue(is_answer_present(True))
+
+        version = published_version("under_65")
+        # Нет ключа demo_smoke — не подставляем False.
+        answers = {"demo_note": "без да/нет"}
+        self.assertNotIn("demo_smoke", answers)
+        self.assertIn("demo_smoke", missing_visible_codes(version, answers))
+
+        # Явный «нет» — ответ есть, код не в missing.
+        with_no = {"demo_smoke": False}
+        self.assertTrue(is_answer_present(with_no["demo_smoke"]))
+        self.assertNotIn("demo_smoke", missing_visible_codes(version, with_no))
 
     def test_t19_due_date_audit(self):
         """T19: аудит смены срока — кто/когда/старое/новое/назначение."""
