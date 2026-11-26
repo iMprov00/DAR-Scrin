@@ -141,6 +141,59 @@ class UiFlowTests(TestCase):
         self.assignment.refresh_from_db()
         self.assertEqual(self.assignment.status, Assignment.Status.ASSIGNED)
 
+    def test_after_return_get_shows_draft_not_snapshot(self):
+        """После возврата GET показывает draft_answers, а не снимок."""
+        pk = self.assignment.pk
+        detail = reverse("employee_assignment_detail", kwargs={"pk": pk})
+        autosave = reverse("employee_assignment_autosave", kwargs={"pk": pk})
+        submit_url = reverse("employee_assignment_submit", kwargs={"pk": pk})
+
+        self.emp_client.post(
+            submit_url,
+            {
+                "answer_demo_smoke": "true",
+                "answer_demo_pack_years": "10",
+                "answer_demo_note": "снимок-v1",
+                "expected_revision": "0",
+            },
+        )
+        self.assignment.refresh_from_db()
+        self.assertEqual(self.assignment.status, Assignment.Status.SUBMITTED)
+        snap_text = self.assignment.snapshots.get(sequence=1).answers["demo_note"]
+        self.assertEqual(snap_text, "снимок-v1")
+
+        r = self.thr_client.post(
+            reverse("therapist_return", kwargs={"pk": pk}),
+            {
+                "comment": "Исправьте текст",
+                "new_due_date": str(self.assignment.due_date),
+            },
+        )
+        self.assertEqual(r.status_code, 302)
+        self.assignment.refresh_from_db()
+
+        r = self.emp_client.post(
+            autosave,
+            {
+                "answer_demo_smoke": "true",
+                "answer_demo_pack_years": "10",
+                "answer_demo_note": "новый-черновик-после-возврата",
+                "expected_revision": str(self.assignment.draft_revision),
+            },
+        )
+        self.assertEqual(r.status_code, 200)
+
+        r = self.emp_client.get(detail)
+        self.assertEqual(r.status_code, 200)
+        body = r.content.decode()
+        self.assertIn("новый-черновик-после-возврата", body)
+        self.assertNotIn("снимок-v1", body)
+        self.assignment.refresh_from_db()
+        self.assertEqual(
+            self.assignment.snapshots.get(sequence=1).answers["demo_note"],
+            "снимок-v1",
+        )
+
 
 class UiPermissionsTests(TestCase):
     def setUp(self):

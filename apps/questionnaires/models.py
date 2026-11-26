@@ -133,6 +133,24 @@ class QuestionItem(models.Model):
     def __str__(self) -> str:
         return f"{self.code}: {self.text[:60]}"
 
+    def _ensure_version_mutable(self) -> None:
+        version = self.version
+        if version is None and self.version_id:
+            version = QuestionnaireVersion.objects.filter(pk=self.version_id).first()
+        if version and version.status == QuestionnaireVersion.Status.PUBLISHED:
+            raise ValidationError(
+                "Нельзя менять пункты опубликованной версии. "
+                "Правки — через копию (docs/architecture.md)."
+            )
+
+    def save(self, *args, **kwargs):
+        self._ensure_version_mutable()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        self._ensure_version_mutable()
+        return super().delete(*args, **kwargs)
+
 
 class ShowCondition(models.Model):
     """Условие показа пункта (в БД). Простой оператор eq по значению управляющего пункта."""
@@ -166,3 +184,24 @@ class ShowCondition(models.Model):
 
     def __str__(self) -> str:
         return f"{self.item.code} if {self.source_item.code} {self.operator} {self.value}"
+
+    def _ensure_version_mutable(self) -> None:
+        item = self.item
+        if item is None and self.item_id:
+            item = QuestionItem.objects.select_related("version").filter(
+                pk=self.item_id
+            ).first()
+        version = item.version if item is not None else None
+        if version and version.status == QuestionnaireVersion.Status.PUBLISHED:
+            raise ValidationError(
+                "Нельзя менять условия показа опубликованной версии. "
+                "Правки — через копию (docs/architecture.md)."
+            )
+
+    def save(self, *args, **kwargs):
+        self._ensure_version_mutable()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        self._ensure_version_mutable()
+        return super().delete(*args, **kwargs)

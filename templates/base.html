@@ -21,8 +21,8 @@
         {% if user.is_therapist %}
           <a href="{% url 'therapist_assignment_list' %}">Назначения</a>
         {% endif %}
-        {% if user.is_org_admin and not user.is_therapist and not user.is_employee %}
-          <a href="{% url 'admin:index' %}">Администрирование</a>
+        {% if user.is_org_admin %}
+          <a href="{% url 'employee_staff_list' %}">Сотрудники</a>
         {% endif %}
       </nav>
       <form method="post" action="{% url 'logout' %}" class="logout-form sidebar-logout">

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Сотрудники — ДАР-Скрин{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <h1>Сотрудники</h1>
+    <a class="btn" href="{% url 'employee_staff_create' %}">Добавить</a>
+  </div>
+  <p class="hint">Учётка и карточка создаются одним действием. Ответы анкет здесь не показываются.</p>
+  {% if profiles %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>ФИО / логин</th>
+        <th>Подразделение</th>
+        <th>Дата рождения</th>
+        <th>Роли</th>
+        <th>Активен</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in profiles %}
+      <tr>
+        <td>
+          {% if p.user.last_name or p.user.first_name %}
+            {{ p.user.last_name }} {{ p.user.first_name }}
+            <span class="hint">({{ p.user.username }})</span>
+          {% else %}
+            {{ p.user.username }}
+          {% endif %}
+        </td>
+        <td>{{ p.department|default:"—" }}</td>
+        <td>{{ p.birth_date }}</td>
+        <td>
+          {% if p.user.is_employee %}Сотрудник {% endif %}
+          {% if p.user.is_therapist %}Терапевт {% endif %}
+          {% if p.user.is_org_admin %}Администратор{% endif %}
+        </td>
+        <td>{% if p.user.is_active %}да{% else %}нет{% endif %}</td>
+        <td><a class="btn-link" href="{% url 'employee_staff_edit' p.user_id %}">Изменить</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>Пока нет карточек сотрудников.</p>
+  {% endif %}
+</section>
+{% endblock %}

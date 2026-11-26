@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Department, EmployeeProfile, Organization
+from .models import Department, Organization
 
 
 @admin.register(Organization)
@@ -14,8 +14,4 @@ class DepartmentAdmin(admin.ModelAdmin):
     list_filter = ("organization",)
 
 
-@admin.register(EmployeeProfile)
-class EmployeeProfileAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "organization", "department", "birth_date")
-    list_filter = ("organization", "department")
-    search_fields = ("user__username",)
+# EmployeeProfile ведётся в основном интерфейсе «Сотрудники», не в /admin/.

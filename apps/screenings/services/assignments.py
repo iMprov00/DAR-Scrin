@@ -389,11 +389,17 @@ def change_due_date(
 
 
 def get_answers_for_user(user: User, assignment: Assignment) -> dict[str, Any]:
-    """Чтение ответов с объектной проверкой прав (в т.ч. отказ админу)."""
+    """Чтение ответов с объектной проверкой прав (в т.ч. отказ админу).
+
+    В статусах редактирования (assigned/draft/returned) — всегда черновик.
+    Когда анкета уже не редактируется — последний неизменяемый снимок.
+    """
     if not can_view_answers(user, assignment):
         raise PermissionDenied(
             "Недостаточно прав для чтения ответов назначения."
         )
+    if assignment.status in EDITABLE_STATUSES:
+        return dict(assignment.draft_answers or {})
     latest = assignment.snapshots.order_by("-sequence").first()
     if latest:
         return dict(latest.answers)

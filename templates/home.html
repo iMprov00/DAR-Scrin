@@ -14,7 +14,7 @@
       <li><a class="btn-link" href="{% url 'therapist_assignment_list' %}">Назначения</a></li>
     {% endif %}
     {% if user.is_org_admin %}
-      <li><a class="btn-link" href="{% url 'admin:index' %}">Администрирование (учётки и подразделения)</a></li>
+      <li><a class="btn-link" href="{% url 'employee_staff_list' %}">Сотрудники</a></li>
     {% endif %}
   </ul>
   {% if not user.is_employee and not user.is_therapist and not user.is_org_admin %}
