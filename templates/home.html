@@ -3,9 +3,22 @@
 {% block title %}Главная — ДАР-Скрин{% endblock %}
 
 {% block content %}
-<section>
+<section class="panel">
   <h1>ДАР-Скрин</h1>
-  <p>Каркас приложения запущен. Рабочие разделы появятся на следующих этапах.</p>
   <p>Вы вошли как <strong>{{ user.username }}</strong>.</p>
+  <ul class="link-list">
+    {% if user.is_employee %}
+      <li><a class="btn-link" href="{% url 'employee_assignment_list' %}">Мои анкеты</a></li>
+    {% endif %}
+    {% if user.is_therapist %}
+      <li><a class="btn-link" href="{% url 'therapist_assignment_list' %}">Назначения</a></li>
+    {% endif %}
+    {% if user.is_org_admin %}
+      <li><a class="btn-link" href="{% url 'admin:index' %}">Администрирование (учётки и подразделения)</a></li>
+    {% endif %}
+  </ul>
+  {% if not user.is_employee and not user.is_therapist and not user.is_org_admin %}
+    <p class="hint">Для вашей учётки не назначены рабочие роли. Обратитесь к администратору.</p>
+  {% endif %}
 </section>
 {% endblock %}

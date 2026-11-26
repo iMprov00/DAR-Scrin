@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Анкета №{{ assignment.pk }} — ДАР-Скрин{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <p><a href="{% url 'employee_assignment_list' %}">← К списку</a></p>
+  <h1>Анкета №{{ assignment.pk }}</h1>
+  {% if is_demo %}
+    <p class="demo-banner">ДЕМО-шаблон — не официальная анкета Минздрава. Формулировки синтетические.</p>
+  {% endif %}
+  <p class="meta-line">
+    <span class="badge status-{{ assignment.status }}">{{ assignment.get_status_display }}</span>
+    {% if overdue %}<span class="badge badge-overdue">Просрочено</span>{% endif %}
+    <span>Срок: {{ assignment.due_date|date:"d.m.Y" }}</span>
+  </p>
+  <p class="hint">{{ template_name }}</p>
+
+  {% if assignment.status == "returned" and assignment.return_comment %}
+    <div class="notice notice-return">
+      <strong>Комментарий врача</strong>
+      <p>{{ assignment.return_comment }}</p>
+    </div>
+  {% endif %}
+
+  {% if assignment.status == "reviewed" %}
+    <div class="notice notice-reviewed">
+      <strong>Проверено</strong>
+      {% if assignment.reviewed_at %}
+        <p>Дата проверки: {{ assignment.reviewed_at|date:"d.m.Y H:i" }}</p>
+      {% endif %}
+      {% if assignment.review_comment %}
+        <p>{{ assignment.review_comment }}</p>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if can_fill and editable %}
+    <form
+      id="questionnaire-form"
+      method="post"
+      action="{% url 'employee_assignment_submit' assignment.pk %}"
+      class="questionnaire-form"
+    >
+      {% csrf_token %}
+      <input type="hidden" name="expected_revision" id="expected_revision" value="{{ assignment.draft_revision }}">
+      {% include "employee/_question_fields.html" %}
+      <div
+        id="autosave-trigger"
+        hx-post="{% url 'employee_assignment_autosave' assignment.pk %}"
+        hx-trigger="change delay:400ms from:#questionnaire-form, input delay:800ms from:#questionnaire-form"
+        hx-target="#autosave-status"
+        hx-swap="innerHTML"
+        hx-include="#questionnaire-form"
+      ></div>
+      <div id="autosave-status" class="autosave-status" aria-live="polite"></div>
+      <p id="submit-errors" class="form-error" hidden></p>
+      <button type="submit" id="submit-btn">Отправить анкету</button>
+    </form>
+  {% else %}
+    <div class="questionnaire-readonly">
+      {% include "employee/_question_fields.html" with can_fill=False editable=False %}
+    </div>
+    {% if assignment.status == "submitted" %}
+      <p class="hint">Анкета отправлена. Редактирование недоступно, пока терапевт не вернёт её на исправление.</p>
+    {% elif assignment.status == "canceled" %}
+      <p class="hint">Назначение отменено.</p>
+    {% endif %}
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_js %}
+{% if can_fill and editable %}
+<script>
+(function () {
+  const form = document.getElementById("questionnaire-form");
+  if (!form) return;
+
+  function parseBoolish(v) {
+    if (v === true || v === false) return v;
+    const s = String(v).toLowerCase();
+    if (s === "true" || s === "1") return true;
+    if (s === "false" || s === "0") return false;
+    return v;
+  }
+
+  function currentAnswers() {
+    const data = {};
+    form.querySelectorAll("[name^='answer_']").forEach(function (el) {
+      const code = el.name.slice("answer_".length);
+      if (el.type === "radio") {
+        if (el.checked) data[code] = parseBoolish(el.value);
+      } else if (el.value !== "") {
+        data[code] = el.value;
+      }
+    });
+    return data;
+  }
+
+  function conditionOk(source, expected, answers) {
+    if (!(source in answers)) return false;
+    return answers[source] === parseBoolish(expected);
+  }
+
+  function updateVisibility() {
+    const answers = currentAnswers();
+    form.querySelectorAll(".question-item").forEach(function (fs) {
+      const raw = fs.getAttribute("data-conditions") || "";
+      if (!raw.trim()) {
+        fs.hidden = false;
+        return;
+      }
+      const parts = raw.split("|").filter(Boolean);
+      let ok = true;
+      parts.forEach(function (p) {
+        const idx = p.indexOf(":");
+        const source = p.slice(0, idx);
+        const expected = p.slice(idx + 1);
+        if (!conditionOk(source, expected, answers)) ok = false;
+      });
+      fs.hidden = !ok;
+      if (!ok) {
+        fs.querySelectorAll("input, textarea").forEach(function (inp) {
+          if (inp.type === "radio" || inp.type === "checkbox") inp.checked = false;
+          else if (inp.name && inp.name.indexOf("answer_") === 0) { /* оставляем в DOM для черновика, но не в видимых */ }
+        });
+      }
+    });
+  }
+
+  form.addEventListener("change", updateVisibility);
+  form.addEventListener("input", updateVisibility);
+  updateVisibility();
+
+  document.body.addEventListener("htmx:afterSwap", function (evt) {
+    if (evt.detail.target && evt.detail.target.id === "autosave-status") {
+      const span = evt.detail.target.querySelector("[data-revision]");
+      if (span) {
+        const rev = span.getAttribute("data-revision");
+        const hidden = document.getElementById("expected_revision");
+        if (hidden && rev) hidden.value = rev;
+      }
+    }
+  });
+
+  form.addEventListener("submit", function (e) {
+    updateVisibility();
+    const answers = currentAnswers();
+    const missing = [];
+    form.querySelectorAll(".question-item:not([hidden])").forEach(function (fs) {
+      const code = fs.getAttribute("data-code");
+      if (!(code in answers) || answers[code] === "" || answers[code] === null) {
+        missing.push(code);
+      }
+    });
+    const err = document.getElementById("submit-errors");
+    if (missing.length) {
+      e.preventDefault();
+      err.hidden = false;
+      err.textContent = "Заполните все видимые пункты перед отправкой: " + missing.join(", ");
+    } else {
+      err.hidden = true;
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

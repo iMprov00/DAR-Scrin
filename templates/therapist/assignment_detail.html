@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Назначение №{{ assignment.pk }} — ДАР-Скрин{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <p><a href="{% url 'therapist_assignment_list' %}">← К списку</a></p>
+  <h1>Назначение №{{ assignment.pk }}</h1>
+  {% if is_demo %}
+    <p class="demo-banner">ДЕМО-шаблон — не официальная анкета Минздрава.</p>
+  {% endif %}
+  <p class="meta-line">
+    Сотрудник: <strong>{{ assignment.screening.employee.user.username }}</strong>
+    · <span class="badge status-{{ assignment.status }}">{{ assignment.get_status_display }}</span>
+    {% if overdue %}<span class="badge badge-overdue">Просрочено</span>{% endif %}
+    · Срок: {{ assignment.due_date|date:"d.m.Y" }}
+  </p>
+
+  {% if assignment.return_comment %}
+    <div class="notice notice-return">
+      <strong>Комментарий возврата</strong>
+      <p>{{ assignment.return_comment }}</p>
+    </div>
+  {% endif %}
+  {% if assignment.status == "reviewed" %}
+    <div class="notice notice-reviewed">
+      <strong>Проверено</strong>
+      {% if assignment.reviewed_at %}
+        <p>{{ assignment.reviewed_at|date:"d.m.Y H:i" }}</p>
+      {% endif %}
+      {% if assignment.review_comment %}<p>{{ assignment.review_comment }}</p>{% endif %}
+    </div>
+  {% endif %}
+
+  <h2>Ответы</h2>
+  <div class="questionnaire-readonly">
+    {% include "employee/_question_fields.html" with can_fill=False editable=False %}
+  </div>
+
+  {% if can_manage %}
+    <div class="therapist-actions">
+      {% if can_return %}
+        <form method="post" action="{% url 'therapist_return' assignment.pk %}" class="action-form">
+          {% csrf_token %}
+          <h2>Вернуть на исправление</h2>
+          <label>
+            Комментарий врача (обязательно)
+            <textarea name="comment" required class="input-control" rows="3"></textarea>
+          </label>
+          <label>
+            Новый срок (допущение: обязателен, может совпасть с прежним)
+            <input type="date" name="new_due_date" required class="input-control"
+              value="{{ assignment.due_date|date:'Y-m-d' }}">
+          </label>
+          <button type="submit">Вернуть на исправление</button>
+        </form>
+      {% endif %}
+
+      {% if can_review %}
+        <form method="post" action="{% url 'therapist_review' assignment.pk %}" class="action-form">
+          {% csrf_token %}
+          <h2>Проверка</h2>
+          <label>
+            Комментарий (необязательно)
+            <textarea name="comment" class="input-control" rows="2"></textarea>
+          </label>
+          <button type="submit">Проверено</button>
+        </form>
+      {% endif %}
+
+      {% if can_change_due %}
+        <form method="post" action="{% url 'therapist_change_due_date' assignment.pk %}" class="action-form">
+          {% csrf_token %}
+          <h2>Изменить срок</h2>
+          <label>
+            Новый срок
+            <input type="date" name="new_due_date" required class="input-control"
+              value="{{ assignment.due_date|date:'Y-m-d' }}">
+          </label>
+          <button type="submit">Изменить срок</button>
+        </form>
+      {% endif %}
+
+      {% if can_cancel %}
+        <form method="post" action="{% url 'therapist_cancel' assignment.pk %}" class="action-form action-danger"
+          onsubmit="return confirm('Отменить назначение? (допущение docs/decisions.md)');">
+          {% csrf_token %}
+          <h2>Отмена</h2>
+          <p class="hint">Допущение: отмена до статуса «Проверено», без жёсткого удаления записей.</p>
+          <button type="submit" class="btn-danger">Отменить назначение</button>
+        </form>
+      {% endif %}
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

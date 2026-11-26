@@ -1,0 +1,43 @@
+{% for row in item_rows %}
+  <fieldset
+    class="question-item"
+    data-code="{{ row.item.code }}"
+    data-conditions='{% for c in row.conditions %}{{ c.source }}:{{ c.value }}{% if not forloop.last %}|{% endif %}{% empty %}{% endfor %}'
+    {% if not row.visible %}hidden{% endif %}
+  >
+    <legend>{{ row.item.text }}</legend>
+    {% if can_fill and editable %}
+      {% if row.item.answer_type == "yes_no" %}
+        <label class="choice">
+          <input type="radio" name="answer_{{ row.item.code }}" value="true"
+            {% if row.value == True %}checked{% endif %}> Да
+        </label>
+        <label class="choice">
+          <input type="radio" name="answer_{{ row.item.code }}" value="false"
+            {% if row.value == False %}checked{% endif %}> Нет
+        </label>
+      {% elif row.item.answer_type == "number" %}
+        <input type="number" name="answer_{{ row.item.code }}"
+          value="{% if row.value != None %}{{ row.value }}{% endif %}"
+          step="any" class="input-control">
+      {% elif row.item.answer_type == "single_choice" %}
+        {% for opt in row.item.choices %}
+          <label class="choice">
+            <input type="radio" name="answer_{{ row.item.code }}" value="{{ opt.value }}"
+              {% if row.value == opt.value %}checked{% endif %}>
+            {{ opt.label }}
+          </label>
+        {% endfor %}
+      {% else %}
+        <textarea name="answer_{{ row.item.code }}" class="input-control" rows="3">{% if row.value != None %}{{ row.value }}{% endif %}</textarea>
+      {% endif %}
+    {% else %}
+      <div class="answer-readonly">
+        {% if row.value == True %}Да
+        {% elif row.value == False %}Нет
+        {% elif row.value != None %}{{ row.value }}
+        {% else %}<span class="hint">Нет ответа</span>{% endif %}
+      </div>
+    {% endif %}
+  </fieldset>
+{% endfor %}

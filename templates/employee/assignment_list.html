@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Мои анкеты — ДАР-Скрин{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <h1>Мои анкеты</h1>
+  {% if rows %}
+    <ul class="assignment-list">
+      {% for row in rows %}
+        <li class="assignment-card">
+          <a href="{% url 'employee_assignment_detail' row.assignment.pk %}">
+            <span class="assignment-title">
+              {{ row.assignment.template_version.template.name }}
+            </span>
+            <span class="meta">
+              <span class="badge status-{{ row.assignment.status }}">{{ row.status_label }}</span>
+              {% if row.overdue %}
+                <span class="badge badge-overdue">Просрочено</span>
+              {% endif %}
+            </span>
+            <span class="due">Срок: {{ row.assignment.due_date|date:"d.m.Y" }}</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="hint">Пока нет назначенных анкет.</p>
+  {% endif %}
+</section>
+{% endblock %}
